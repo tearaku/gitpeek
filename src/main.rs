@@ -1,3 +1,4 @@
+use arboard::Clipboard;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::Select;
 use gitpeek::config::{self};
@@ -15,7 +16,7 @@ fn main() {
     let git_list = fetch_git_dir(args);
     if let Err(e) = git_list {
         eprintln!("Error in gitpeeking: {}", e);
-        return ();
+        return;
     }
     let git_list = git_list.unwrap();
 
@@ -27,7 +28,11 @@ fn main() {
         .unwrap();
 
     if let Some(selected) = selected {
-        println!("Copied to clipboard! {}", git_list[selected]);
+        let mut clipboard = Clipboard::new().unwrap();
+        clipboard
+            .set_text(["cd ".to_owned() + git_list[selected].dir.to_str().unwrap_or("")].join(" "))
+            .unwrap();
+        println!("Copied to clipboard!");
     } else {
         println!("Nothing selected, exiting...");
     }

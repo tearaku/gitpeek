@@ -1,10 +1,10 @@
 use super::config::CliArgs;
 use core::fmt;
-use std::{env, ffi::OsString, fmt::Display, fs, io, path::PathBuf};
+use std::{env, fmt::Display, fs, io, path::PathBuf};
 
 pub struct SeekRes {
-    dir_name: String,
-    git_ref: String,
+    pub dir: PathBuf,
+    pub git_ref: String,
 }
 
 enum DirType {
@@ -19,17 +19,12 @@ pub fn fetch_git_dir(args: CliArgs) -> Result<Vec<SeekRes>, String> {
         .map(|path| {
             let git_ref = get_git_ref(path.to_path_buf()).unwrap_or_default();
             SeekRes {
-                dir_name: path
-                    .file_name()
-                    .unwrap_or(&OsString::from("ERR"))
-                    .to_str()
-                    .unwrap_or_default()
-                    .to_string(),
+                dir: path.to_owned(),
                 git_ref,
             }
         })
         .collect();
-    return Ok(seek_res_list);
+    Ok(seek_res_list)
 }
 
 fn recursive_search(args: CliArgs, cur_dir: PathBuf) -> Result<Vec<PathBuf>, String> {
@@ -119,6 +114,6 @@ fn get_dir_list(tar_dir: &PathBuf) -> Result<Vec<DirType>, String> {
 
 impl Display for SeekRes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} ({})", self.dir_name, self.git_ref)
+        write!(f, "{} ({})", self.dir.to_str().unwrap_or(""), self.git_ref)
     }
 }
