@@ -1,6 +1,6 @@
 use super::config::CliArgs;
 use core::fmt;
-use std::{env, fmt::Display, fs, io, path::PathBuf};
+use std::{fmt::Display, fs, io, path::PathBuf};
 
 pub struct SeekRes {
     pub dir: PathBuf,
@@ -13,8 +13,7 @@ enum DirType {
 }
 
 pub fn fetch_git_dir(args: CliArgs) -> Result<Vec<SeekRes>, String> {
-    let cur_dir = env::current_dir().unwrap_or_default();
-    let seek_res_list: Vec<SeekRes> = recursive_search(args, cur_dir)?
+    let seek_res_list: Vec<SeekRes> = recursive_search(args)?
         .iter()
         .map(|path| {
             let git_ref = get_git_ref(path.to_path_buf()).unwrap_or_default();
@@ -27,9 +26,9 @@ pub fn fetch_git_dir(args: CliArgs) -> Result<Vec<SeekRes>, String> {
     Ok(seek_res_list)
 }
 
-fn recursive_search(args: CliArgs, cur_dir: PathBuf) -> Result<Vec<PathBuf>, String> {
+fn recursive_search(args: CliArgs) -> Result<Vec<PathBuf>, String> {
     let mut git_dir: Vec<PathBuf> = Vec::new();
-    let mut search_list = get_dir_list(&args.dir.unwrap_or(cur_dir))?;
+    let mut search_list = get_dir_list(&args, &args.dir)?;
 
     let mut cur_layer_res: Vec<DirType> = Vec::new();
     for _ in 0..=args.max_depth {
@@ -40,7 +39,7 @@ fn recursive_search(args: CliArgs, cur_dir: PathBuf) -> Result<Vec<PathBuf>, Str
             .try_for_each(|item| -> Result<(), String> {
                 match item {
                     DirType::NormalDir(dir) => {
-                        cur_layer_res.append(&mut get_dir_list(&dir)?);
+                        cur_layer_res.append(&mut get_dir_list(&args, &dir)?);
                         Ok(())
                     }
                     DirType::GitDir(dir) => {
@@ -84,22 +83,31 @@ fn get_git_ref(path: PathBuf) -> io::Result<String> {
     Ok(git_branch)
 }
 
-fn get_dir_list(tar_dir: &PathBuf) -> Result<Vec<DirType>, String> {
+fn get_dir_list(args: &CliArgs, tar_dir: &PathBuf) -> Result<Vec<DirType>, String> {
     let tar_dir = tar_dir.to_owned();
     let _path: PathBuf = [tar_dir.clone(), ".git".into()].iter().collect();
 
     let dir = fs::read_dir(&tar_dir).map_err(|e| format!("Failed to read directory: {:?}", e))?;
     let dir_iter = dir.flatten().filter_map(|entry| -> Option<PathBuf> {
         let f_path = entry.path();
-        match fs::metadata(&f_path) {
-            Ok(metadata) => {
-                if metadata.is_dir() {
-                    Some(f_path)
-                } else {
-                    None
-                }
+
+        if let Ok(metadata) = fs::metadata(&f_path) {
+            if metadata.is_dir()
+                && !args.ignore_list.contains(
+                    &f_path
+                        .file_name()
+                        .unwrap_or_default()
+                        .to_str()
+                        .unwrap_or_default()
+                        .to_string(),
+                )
+            {
+                Some(f_path)
+            } else {
+                None
             }
-            Err(_e) => None,
+        } else {
+            None
         }
     });
     let dir_col: Vec<PathBuf> = dir_iter.collect();
@@ -114,6 +122,11 @@ fn get_dir_list(tar_dir: &PathBuf) -> Result<Vec<DirType>, String> {
 
 impl Display for SeekRes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} ({})", self.dir.to_str().unwrap_or(""), self.git_ref)
+        write!(
+            f,
+            "{} ({})",
+            self.dir.file_name().and_then(|s| s.to_str()).unwrap_or("."),
+            self.git_ref
+        )
     }
 }

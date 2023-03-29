@@ -1,6 +1,6 @@
 use arboard::Clipboard;
 use dialoguer::theme::ColorfulTheme;
-use dialoguer::Select;
+use dialoguer::FuzzySelect;
 use gitpeek::config::{self};
 use gitpeek::gitseek::fetch_git_dir;
 
@@ -20,8 +20,8 @@ fn main() {
     }
     let git_list = git_list.unwrap();
 
-    let selected = Select::with_theme(&ColorfulTheme::default())
-        .with_prompt("Select the git directory to copy to clipboard (`q` to quit).")
+    let selected = FuzzySelect::with_theme(&ColorfulTheme::default())
+        .with_prompt("Select the git directory w/ array keys to copy to clipboard,\nor type for fuzzy finding (`Esc` to quit).")
         .default(0)
         .items(&git_list)
         .interact_opt()
