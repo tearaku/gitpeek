@@ -1,6 +1,6 @@
 use super::config::CliArgs;
 use core::fmt;
-use std::{env, fmt::Display, fs, io, path::PathBuf};
+use std::{fmt::Display, fs, io, path::PathBuf};
 
 pub struct SeekRes {
     pub dir: PathBuf,
@@ -13,8 +13,7 @@ enum DirType {
 }
 
 pub fn fetch_git_dir(args: CliArgs) -> Result<Vec<SeekRes>, String> {
-    let cur_dir = env::current_dir().unwrap_or_default();
-    let seek_res_list: Vec<SeekRes> = recursive_search(args, cur_dir)?
+    let seek_res_list: Vec<SeekRes> = recursive_search(args)?
         .iter()
         .map(|path| {
             let git_ref = get_git_ref(path.to_path_buf()).unwrap_or_default();
@@ -27,9 +26,9 @@ pub fn fetch_git_dir(args: CliArgs) -> Result<Vec<SeekRes>, String> {
     Ok(seek_res_list)
 }
 
-fn recursive_search(args: CliArgs, cur_dir: PathBuf) -> Result<Vec<PathBuf>, String> {
+fn recursive_search(args: CliArgs) -> Result<Vec<PathBuf>, String> {
     let mut git_dir: Vec<PathBuf> = Vec::new();
-    let mut search_list = get_dir_list(&args, args.dir.as_ref().unwrap_or(&cur_dir))?;
+    let mut search_list = get_dir_list(&args, &args.dir)?;
 
     let mut cur_layer_res: Vec<DirType> = Vec::new();
     for _ in 0..=args.max_depth {
@@ -126,7 +125,7 @@ impl Display for SeekRes {
         write!(
             f,
             "{} ({})",
-            self.dir.file_name().and_then(|s| s.to_str()).unwrap_or(""),
+            self.dir.file_name().and_then(|s| s.to_str()).unwrap_or("."),
             self.git_ref
         )
     }
