@@ -79,7 +79,6 @@ fn parse_config_file() -> Result<Settings, ConfigError> {
 fn process_command(pargs: &mut Arguments, settings: &mut Settings) -> Result<CmdResult, String> {
     // To get successive values --> call this multiple times (they're drained)
     if let Ok(Some(cmd)) = pargs.opt_free_from_str::<String>() {
-        println!("free standing arg: {}", cmd);
         match cmd.as_str() {
             "getconfig" => {
                 let value = serde_json::to_string(settings).unwrap();
